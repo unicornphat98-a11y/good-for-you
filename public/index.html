@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <title>ระบบอัปโหลดและค้นหารูปภาพ</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; max-width: 800px; margin: auto; }
+        .box { border: 1px solid #ccc; padding: 15px; margin-bottom: 20px; border-radius: 5px; }
+        .result-item { display: flex; gap: 15px; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 15px; }
+        .result-item img { max-width: 150px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+
+    <h1>ระบบอัปโหลดและค้นหารูปภาพ</h1>
+
+    <!-- ส่วนที่ 1: ฟอร์มอัปโหลด -->
+    <div class="box">
+        <h3>อัปโหลดข้อมูลใหม่</h3>
+        <form id="uploadForm">
+            <p><input type="text" name="title" placeholder="ชื่อรูปภาพ (หัวข้อ)" required></p>
+            <p><textarea name="description" placeholder="รายละเอียด..." required></textarea></p>
+            <p><input type="file" name="imageFile" accept="image/*" required></p>
+            <button type="submit">อัปโหลดเลย</button>
+        </form>
+        <p id="uploadStatus" style="color: green;"></p>
+    </div>
+
+    <!-- ส่วนที่ 2: ค้นหาและแสดงผล -->
+    <div class="box">
+        <h3>ค้นหาข้อมูล</h3>
+        <input type="text" id="searchInput" placeholder="พิมพ์คำค้นหาที่นี่...">
+        <button onclick="searchData()">ค้นหา</button>
+        
+        <div id="results" style="margin-top: 20px;">
+            <!-- ผลลัพธ์จะมาแสดงตรงนี้เฉพาะตอนกดค้นหา -->
+        </div>
+    </div>
+
+    <script>
+        // 1. จัดการตอนกดปุ่ม "อัปโหลด"
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+
+            const response = await fetch('/upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+            document.getElementById('uploadStatus').innerText = result.message;
+            e.target.reset(); // ล้างข้อมูลในฟอร์มเมื่ออัปโหลดเสร็จ (รูปจะไม่ขึ้นโชว์ทันที)
+        });
+
+        // 2. จัดการตอนกดปุ่ม "ค้นหา"
+        async function searchData() {
+            const keyword = document.getElementById('searchInput').value.trim();
+            const resultsDiv = document.getElementById('results');
+            
+            // ถ้าช่องค้นหาว่างเปล่า ให้ล้างหน้าจอแล้วไม่ต้องค้นหา
+            if (keyword === '') {
+                resultsDiv.innerHTML = '<p style="color: gray;">กรุณาพิมพ์คำค้นหาก่อนครับ</p>';
+                return;
+            }
+
+            const response = await fetch(`/search?q=${keyword}`);
+            const data = await response.json();
+
+            resultsDiv.innerHTML = ''; // ล้างของเก่าก่อนแสดงผลใหม่
+
+            if (data.length === 0) {
+                resultsDiv.innerHTML = '<p>ไม่พบข้อมูลที่ตรงกับคำค้นหา</p>';
+                return;
+            }
+
+            // แสดงรายการที่ค้นเจอ
+            data.forEach(item => {
+                resultsDiv.innerHTML += `
+                    <div class="result-item">
+                        <img src="${item.imageUrl}" alt="image">
+                        <div>
+                            <h4>${item.title}</h4>
+                            <p>${item.description}</p>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+    </script>
+</body>
+</html>
