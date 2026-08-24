@@ -9,11 +9,13 @@
             padding: 20px; 
             max-width: 800px; 
             margin: auto; 
-            /* ใส่ลิงก์รูปภาพพื้นหลังของคุณตรง URL ด้านล่างนี้ */
-            background-image: url('54691586-3d54-4118-bbcb-e0e69404797c.jpg'); 
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
+            
+            /* ใช้รูปภาพพื้นหลังเป็นไฟล์ deadpool.jpg (ไฟล์ต้องอยู่ในโฟลเดอร์ public ด้วยนะครับ) */
+            background-image: url('deadpool.jpg'); 
+            
+            background-size: cover;          /* ยืดรูปให้เต็มจอพอดี */
+            background-position: center;     /* จัดรูปให้อยู่ตรงกลาง */
+            background-attachment: fixed;    /* ล็อกรูปพื้นหลังไม่ให้เลื่อนตามเวลาเลื่อนหน้าเว็บ */
             color: #333;
         }
         h1 {
@@ -25,7 +27,7 @@
             padding: 20px; 
             margin-bottom: 20px; 
             border-radius: 8px; 
-            background-color: rgba(255, 255, 255, 0.9); /* ทำให้กล่องขาวโปร่งแสงเล็กน้อย */
+            background-color: rgba(255, 255, 255, 0.9); /* ทำให้กล่องขาวโปร่งแสงเล็กน้อยเพื่อให้อ่านตัวหนังสือง่าย */
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
         .result-item { 
@@ -40,6 +42,7 @@
             max-width: 150px; 
             border-radius: 5px; 
             object-fit: cover; 
+            border: 2px solid #ddd;
         }
         .download-btn { 
             display: inline-block; 
@@ -56,7 +59,7 @@
         }
     </style>
 </head>
-<body onload="loadAllData()">
+<body>
 
     <h1>ระบบอัปโหลดและค้นหารูปภาพ</h1>
 
@@ -65,38 +68,27 @@
         <h3>อัปโหลดข้อมูลใหม่</h3>
         <form id="uploadForm">
             <p><input type="text" name="title" placeholder="ชื่อรูปภาพ (หัวข้อ)" required style="width: 100%; padding: 8px; box-sizing: border-box;"></p>
-            <p><textarea name="description" placeholder="รายละเอียด..." required style="width: 100%; padding: 8px; box-sizing: border-box;"></textarea></p>
+            <p><textarea name="description" placeholder="รายละเอียด..." required style="width: 100%; padding: 8px; box-sizing: border-box; height: 60px;"></textarea></p>
             <p><input type="file" name="imageFile" accept="image/*" required></p>
-            <button type="type" style="padding: 8px 15px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">อัปโหลดเลย</button>
+            <button type="submit" style="padding: 8px 15px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">อัปโหลดเลย</button>
         </form>
         <p id="uploadStatus" style="color: green; font-weight: bold;"></p>
     </div>
 
     <!-- ส่วนที่ 2: ค้นหาและแสดงผล -->
     <div class="box">
-        <h3>รายการรูปภาพทั้งหมด</h3>
+        <h3>ค้นหาข้อมูล</h3>
         <p>
-            <input type="text" id="searchInput" placeholder="พิมพ์คำค้นหาที่นี่..." onkeyup="searchData()" style="padding: 6px; width: 60%;">
-            <button type="button" onclick="searchData()" style="padding: 6px 12px;">ค้นหา</button>
+            <input type="text" id="searchInput" placeholder="พิมพ์คำค้นหาที่นี่..." style="padding: 6px; width: 60%; box-sizing: border-box;">
+            <button type="button" onclick="searchData()" style="padding: 6px 12px; cursor: pointer;">ค้นหา</button>
         </p>
         
         <div id="results" style="margin-top: 20px;">
-            <!-- รายการรูปพร้อมปุ่มดาวน์โหลดจะแสดงตรงนี้ -->
+            <!-- ผลการค้นหาจะแสดงเมื่อกดปุ่มค้นหา -->
         </div>
     </div>
 
     <script>
-        // โหลดข้อมูลทั้งหมดเมื่อเปิดหน้าเว็บ
-        async function loadAllData() {
-            try {
-                const response = await fetch('/search');
-                const data = await response.json();
-                renderResults(data);
-            } catch (err) {
-                console.error('Error loading data:', err);
-            }
-        }
-
         // จัดการตอนกดปุ่มอัปโหลด
         document.getElementById('uploadForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -115,7 +107,6 @@
                 const result = await response.json();
                 statusEl.innerText = result.message;
                 e.target.reset(); 
-                loadAllData(); // โหลดรายการใหม่ทันที
             } catch (err) {
                 statusEl.style.color = 'red';
                 statusEl.innerText = 'เกิดข้อผิดพลาดในการอัปโหลด';
@@ -124,7 +115,9 @@
 
         // ค้นหาข้อมูล
         async function searchData() {
-            const keyword = document.getElementById('searchInput', '').value.trim();
+            const keyword = document.getElementById('searchInput').value.trim();
+            if (!keyword) return;
+
             try {
                 const response = await fetch(`/search?q=${encodeURIComponent(keyword)}`);
                 const data = await response.json();
@@ -140,17 +133,17 @@
             resultsDiv.innerHTML = ''; 
 
             if (data.length === 0) {
-                resultsDiv.innerHTML = '<p style="color: gray;">ไม่พบข้อมูล</p>';
+                resultsDiv.innerHTML = '<p style="color: gray; font-style: italic;">ไม่พบข้อมูล</p>';
                 return;
             }
 
             data.forEach(item => {
                 resultsDiv.innerHTML += `
                     <div class="result-item">
-                        <img src="${item.imageUrl}" alt="image">
+                        <img src="${item.imageUrl}" alt="${item.title}">
                         <div>
-                            <h4>${item.title}</h4>
-                            <p>${item.description}</p>
+                            <h4 style="margin: 0 0 5px 0;">${item.title}</h4>
+                            <p style="margin: 0 0 10px 0; font-size: 14px; color: #555;">${item.description}</p>
                             <a href="${item.imageUrl}" target="_blank" download class="download-btn">ดาวน์โหลดรูปนี้</a>
                         </div>
                     </div>
