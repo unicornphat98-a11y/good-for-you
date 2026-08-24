@@ -7,10 +7,10 @@
         body { font-family: sans-serif; padding: 20px; max-width: 800px; margin: auto; }
         .box { border: 1px solid #ccc; padding: 15px; margin-bottom: 20px; border-radius: 5px; }
         .result-item { display: flex; gap: 15px; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 15px; }
-        .result-item img { max-width: 150px; border-radius: 5px; }
+        .result-item img { max-width: 150px; border-radius: 5px; object-fit: cover; }
     </style>
 </head>
-<body>
+<body onload="loadAllData()">
 
     <h1>ระบบอัปโหลดและค้นหารูปภาพ</h1>
 
@@ -28,72 +28,89 @@
 
     <!-- ส่วนที่ 2: ค้นหาและแสดงผล -->
     <div class="box">
-        <h3>ค้นหาข้อมูล</h3>
-        <input type="text" id="searchInput" placeholder="พิมพ์คำค้นหาที่นี่...">
+        <h3>ค้นหาข้อมูล / รายการทั้งหมด</h3>
+        <input type="text" id="searchInput" placeholder="พิมพ์คำค้นหาที่นี่..." onkeyup="searchData()">
         <button type="button" onclick="searchData()">ค้นหา</button>
         
         <div id="results" style="margin-top: 20px;">
-            <!-- ผลลัพธ์จะมาแสดงตรงนี้ -->
+            <!-- รายการทั้งหมดจะแสดงตรงนี้อัตโนมัติ -->
         </div>
     </div>
 
     <script>
+        // โหลดข้อมูลทั้งหมดทันทีที่เปิดหน้าเว็บ
+        async function loadAllData() {
+            try {
+                const response = await fetch('/search'); // ถ้าไม่ส่ง q จะดึงทั้งหมด
+                const data = await response.json();
+                renderResults(data);
+            } catch (err) {
+                console.error('Error loading data:', err);
+            }
+        }
+
         // 1. จัดการตอนกดปุ่ม "อัปโหลด"
         document.getElementById('uploadForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
             const formData = new FormData(e.target);
+            const statusEl = document.getElementById('uploadStatus');
 
             try {
+                statusEl.style.color = 'green';
+                statusEl.innerText = 'กำลังอัปโหลด...';
+
                 const response = await fetch('/upload', {
                     method: 'POST',
                     body: formData
                 });
 
                 const result = await response.json();
-                document.getElementById('uploadStatus').innerText = result.message;
+                statusEl.innerText = result.message;
                 e.target.reset(); 
+                
+                // โหลดข้อมูลใหม่แสดงผลทันทีหลังอัปโหลดเสร็จ
+                loadAllData();
             } catch (err) {
-                document.getElementById('uploadStatus').innerText = 'เกิดข้อผิดพลาดในการอัปโหลด';
-                document.getElementById('uploadStatus').style.color = 'red';
+                statusEl.style.color = 'red';
+                statusEl.innerText = 'เกิดข้อผิดพลาดในการอัปโหลด';
             }
         });
 
-        // 2. จัดการตอนกดปุ่ม "ค้นหา"
+        // 2. จัดการตอนค้นหา (หรือพิมพ์ค้นหาแบบ Real-time)
         async function searchData() {
             const keyword = document.getElementById('searchInput').value.trim();
-            const resultsDiv = document.getElementById('results');
             
-            if (keyword === '') {
-                resultsDiv.innerHTML = '<p style="color: gray;">กรุณาพิมพ์คำค้นหาก่อนครับ</p>';
-                return;
-            }
-
             try {
                 const response = await fetch(`/search?q=${encodeURIComponent(keyword)}`);
                 const data = await response.json();
-
-                resultsDiv.innerHTML = ''; 
-
-                if (data.length === 0) {
-                    resultsDiv.innerHTML = '<p>ไม่พบข้อมูลที่ตรงกับคำค้นหา</p>';
-                    return;
-                }
-
-                data.forEach(item => {
-                    resultsDiv.innerHTML += `
-                        <div class="result-item">
-                            <img src="${item.imageUrl}" alt="image">
-                            <div>
-                                <h4>${item.title}</h4>
-                                <p>${item.description}</p>
-                            </div>
-                        </div>
-                    `;
-                });
+                renderResults(data);
             } catch (err) {
-                resultsDiv.innerHTML = '<p style="color: red;">เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์</p>';
+                console.error('Error searching:', err);
             }
+        }
+
+        // ฟังก์ชันช่วยแสดงผลข้อมูลลงในหน้าเว็บ
+        function renderResults(data) {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = ''; 
+
+            if (data.length === 0) {
+                resultsDiv.innerHTML = '<p style="color: gray;">ไม่พบข้อมูล</p>';
+                return;
+            }
+
+            data.forEach(item => {
+                resultsDiv.innerHTML += `
+                    <div class="result-item">
+                        <img src="${item.imageUrl}" alt="image">
+                        <div>
+                            <h4>${item.title}</h4>
+                            <p>${item.description}</p>
+                        </div>
+                    </div>
+                `;
+            });
         }
     </script>
 </body>
