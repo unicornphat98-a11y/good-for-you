@@ -4,10 +4,56 @@
     <meta charset="UTF-8">
     <title>ระบบอัปโหลดและค้นหารูปภาพ</title>
     <style>
-        body { font-family: sans-serif; padding: 20px; max-width: 800px; margin: auto; }
-        .box { border: 1px solid #ccc; padding: 15px; margin-bottom: 20px; border-radius: 5px; }
-        .result-item { display: flex; gap: 15px; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 15px; }
-        .result-item img { max-width: 150px; border-radius: 5px; object-fit: cover; }
+        body { 
+            font-family: sans-serif; 
+            padding: 20px; 
+            max-width: 800px; 
+            margin: auto; 
+            /* ใส่ลิงก์รูปภาพพื้นหลังของคุณตรง URL ด้านล่างนี้ */
+            background-image: url('https://images.unsplash.com/photo-1579546929518-9e396f3cc809'); 
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            color: #333;
+        }
+        h1 {
+            color: #fff;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+        }
+        .box { 
+            border: 1px solid rgba(255, 255, 255, 0.4); 
+            padding: 20px; 
+            margin-bottom: 20px; 
+            border-radius: 8px; 
+            background-color: rgba(255, 255, 255, 0.9); /* ทำให้กล่องขาวโปร่งแสงเล็กน้อย */
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .result-item { 
+            display: flex; 
+            gap: 15px; 
+            margin-bottom: 15px; 
+            border-bottom: 1px solid #eee; 
+            padding-bottom: 15px; 
+            align-items: center; 
+        }
+        .result-item img { 
+            max-width: 150px; 
+            border-radius: 5px; 
+            object-fit: cover; 
+        }
+        .download-btn { 
+            display: inline-block; 
+            margin-top: 8px; 
+            padding: 6px 12px; 
+            background-color: #007bff; 
+            color: white; 
+            text-decoration: none; 
+            border-radius: 4px; 
+            font-size: 14px; 
+        }
+        .download-btn:hover { 
+            background-color: #0056b3; 
+        }
     </style>
 </head>
 <body onload="loadAllData()">
@@ -18,30 +64,32 @@
     <div class="box">
         <h3>อัปโหลดข้อมูลใหม่</h3>
         <form id="uploadForm">
-            <p><input type="text" name="title" placeholder="ชื่อรูปภาพ (หัวข้อ)" required></p>
-            <p><textarea name="description" placeholder="รายละเอียด..." required></textarea></p>
+            <p><input type="text" name="title" placeholder="ชื่อรูปภาพ (หัวข้อ)" required style="width: 100%; padding: 8px; box-sizing: border-box;"></p>
+            <p><textarea name="description" placeholder="รายละเอียด..." required style="width: 100%; padding: 8px; box-sizing: border-box;"></textarea></p>
             <p><input type="file" name="imageFile" accept="image/*" required></p>
-            <button type="submit">อัปโหลดเลย</button>
+            <button type="type" style="padding: 8px 15px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">อัปโหลดเลย</button>
         </form>
-        <p id="uploadStatus" style="color: green;"></p>
+        <p id="uploadStatus" style="color: green; font-weight: bold;"></p>
     </div>
 
     <!-- ส่วนที่ 2: ค้นหาและแสดงผล -->
     <div class="box">
-        <h3>ค้นหาข้อมูล / รายการทั้งหมด</h3>
-        <input type="text" id="searchInput" placeholder="พิมพ์คำค้นหาที่นี่..." onkeyup="searchData()">
-        <button type="button" onclick="searchData()">ค้นหา</button>
+        <h3>รายการรูปภาพทั้งหมด</h3>
+        <p>
+            <input type="text" id="searchInput" placeholder="พิมพ์คำค้นหาที่นี่..." onkeyup="searchData()" style="padding: 6px; width: 60%;">
+            <button type="button" onclick="searchData()" style="padding: 6px 12px;">ค้นหา</button>
+        </p>
         
         <div id="results" style="margin-top: 20px;">
-            <!-- รายการทั้งหมดจะแสดงตรงนี้อัตโนมัติ -->
+            <!-- รายการรูปพร้อมปุ่มดาวน์โหลดจะแสดงตรงนี้ -->
         </div>
     </div>
 
     <script>
-        // โหลดข้อมูลทั้งหมดทันทีที่เปิดหน้าเว็บ
+        // โหลดข้อมูลทั้งหมดเมื่อเปิดหน้าเว็บ
         async function loadAllData() {
             try {
-                const response = await fetch('/search'); // ถ้าไม่ส่ง q จะดึงทั้งหมด
+                const response = await fetch('/search');
                 const data = await response.json();
                 renderResults(data);
             } catch (err) {
@@ -49,10 +97,9 @@
             }
         }
 
-        // 1. จัดการตอนกดปุ่ม "อัปโหลด"
+        // จัดการตอนกดปุ่มอัปโหลด
         document.getElementById('uploadForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
             const formData = new FormData(e.target);
             const statusEl = document.getElementById('uploadStatus');
 
@@ -68,19 +115,16 @@
                 const result = await response.json();
                 statusEl.innerText = result.message;
                 e.target.reset(); 
-                
-                // โหลดข้อมูลใหม่แสดงผลทันทีหลังอัปโหลดเสร็จ
-                loadAllData();
+                loadAllData(); // โหลดรายการใหม่ทันที
             } catch (err) {
                 statusEl.style.color = 'red';
                 statusEl.innerText = 'เกิดข้อผิดพลาดในการอัปโหลด';
             }
         });
 
-        // 2. จัดการตอนค้นหา (หรือพิมพ์ค้นหาแบบ Real-time)
+        // ค้นหาข้อมูล
         async function searchData() {
-            const keyword = document.getElementById('searchInput').value.trim();
-            
+            const keyword = document.getElementById('searchInput', '').value.trim();
             try {
                 const response = await fetch(`/search?q=${encodeURIComponent(keyword)}`);
                 const data = await response.json();
@@ -90,7 +134,7 @@
             }
         }
 
-        // ฟังก์ชันช่วยแสดงผลข้อมูลลงในหน้าเว็บ
+        // แสดงผลพร้อมปุ่มดาวน์โหลด
         function renderResults(data) {
             const resultsDiv = document.getElementById('results');
             resultsDiv.innerHTML = ''; 
@@ -107,6 +151,7 @@
                         <div>
                             <h4>${item.title}</h4>
                             <p>${item.description}</p>
+                            <a href="${item.imageUrl}" target="_blank" download class="download-btn">ดาวน์โหลดรูปนี้</a>
                         </div>
                     </div>
                 `;
