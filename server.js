@@ -41,6 +41,11 @@ const Item = mongoose.model('Item', ItemSchema);
 
 app.use(express.static('public'));
 
+// เส้นทางสำหรับหน้าแรก (แก้ปัญหา Not Found)
+app.get('/', (req, res) => {
+    res.sendFile(__dirname + '/public/index.html');
+});
+
 // API สำหรับรับข้อมูลและอัปโหลดรูปขึ้น Cloud
 app.post('/upload', upload.single('imageFile'), async (req, res) => {
     try {
