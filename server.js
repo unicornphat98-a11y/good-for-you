@@ -10,11 +10,11 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
-// ตั้งค่า Cloudinary (ใส่ค่าของคุณ)
+// ตั้งค่า Cloudinary (ดึงค่าจาก Environment Variables บน Render)
 cloudinary.config({
-    cloud_name: 'YOUR_CLOUD_NAME',
-    api_key: 'YOUR_API_KEY',
-    api_secret: 'YOUR_API_SECRET'
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
 const storage = new CloudinaryStorage({
@@ -27,18 +27,19 @@ const storage = new CloudinaryStorage({
 
 const upload = multer({ storage: storage });
 
-// เชื่อมต่อ MongoDB (ใส่ Connection String ของคุณ)
-mongoose.connect('YOUR_MONGODB_URI', {
+// เชื่อมต่อ MongoDB (ดึงค่าจาก Environment Variables บน Render)
+mongoose.connect(process.env.MONGODB_URI, {
     useNewUrlParser: true,
     useUnifiedTopology: true
-}).then(() => console.log('MongoDB Connected'));
+}).then(() => console.log('MongoDB Connected'))
+  .catch(err => console.error('MongoDB Connection Error:', err));
 
 // โครงสร้างฐานข้อมูล
 const ImageSchema = new mongoose.Schema({
     title: String,
     description: String,
     imageUrl: String,
-    cloudinaryId: String, // เก็บไว้ใช้สำหรับลบรูปออกจาก Cloudinary
+    cloudinaryId: String, 
     createdAt: { type: Date, default: Date.now }
 });
 const ImageModel = mongoose.model('Image', ImageSchema);
@@ -109,12 +110,10 @@ app.delete('/delete/:id', async (req, res) => {
         const image = await ImageModel.findById(req.params.id);
         if (!image) return res.status(404).json({ message: 'ไม่พบรูปภาพ' });
 
-        // ลบออกจาก Cloudinary
         if (image.cloudinaryId) {
             await cloudinary.uploader.destroy(image.cloudinaryId);
         }
 
-        // ลบออกจาก MongoDB
         await ImageModel.findByIdAndDelete(req.params.id);
         res.json({ message: 'ลบรูปภาพสำเร็จ' });
     } catch (err) {

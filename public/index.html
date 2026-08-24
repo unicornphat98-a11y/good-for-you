@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <title>ระบบอัปโหลด ค้นหา แก้ไข และลบรูปภาพ</title>
+    <title>ระบบจัดการรูปภาพ (อัปโหลด 5 รูป, แก้ไข, ลบ)</title>
     <style>
         body { 
             font-family: sans-serif; 
@@ -157,7 +157,7 @@
                 });
                 const result = await response.json();
                 alert(result.message);
-                searchData(); // โหลดผลลัพธ์ใหม่
+                searchData();
             } catch (err) {
                 alert('เกิดข้อผิดพลาดในการแก้ไข');
             }
@@ -171,7 +171,7 @@
                 const response = await fetch(`/delete/${id}`, { method: 'DELETE' });
                 const result = await response.json();
                 alert(result.message);
-                document.getElementById(`item-${id}`).remove(); // ลบออกจากหน้าจอทันที
+                document.getElementById(`item-${id}`).remove();
             } catch (err) {
                 alert('เกิดข้อผิดพลาดในการลบ');
             }
