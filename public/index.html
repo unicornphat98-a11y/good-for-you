@@ -30,10 +30,10 @@
     <div class="box">
         <h3>ค้นหาข้อมูล</h3>
         <input type="text" id="searchInput" placeholder="พิมพ์คำค้นหาที่นี่...">
-        <button onclick="searchData()">ค้นหา</button>
+        <button type="button" onclick="searchData()">ค้นหา</button>
         
         <div id="results" style="margin-top: 20px;">
-            <!-- ผลลัพธ์จะมาแสดงตรงนี้เฉพาะตอนกดค้นหา -->
+            <!-- ผลลัพธ์จะมาแสดงตรงนี้ -->
         </div>
     </div>
 
@@ -44,14 +44,19 @@
             
             const formData = new FormData(e.target);
 
-            const response = await fetch('/upload', {
-                method: 'POST',
-                body: formData
-            });
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
 
-            const result = await response.json();
-            document.getElementById('uploadStatus').innerText = result.message;
-            e.target.reset(); // ล้างข้อมูลในฟอร์มเมื่ออัปโหลดเสร็จ (รูปจะไม่ขึ้นโชว์ทันที)
+                const result = await response.json();
+                document.getElementById('uploadStatus').innerText = result.message;
+                e.target.reset(); 
+            } catch (err) {
+                document.getElementById('uploadStatus').innerText = 'เกิดข้อผิดพลาดในการอัปโหลด';
+                document.getElementById('uploadStatus').style.color = 'red';
+            }
         });
 
         // 2. จัดการตอนกดปุ่ม "ค้นหา"
@@ -59,34 +64,36 @@
             const keyword = document.getElementById('searchInput').value.trim();
             const resultsDiv = document.getElementById('results');
             
-            // ถ้าช่องค้นหาว่างเปล่า ให้ล้างหน้าจอแล้วไม่ต้องค้นหา
             if (keyword === '') {
                 resultsDiv.innerHTML = '<p style="color: gray;">กรุณาพิมพ์คำค้นหาก่อนครับ</p>';
                 return;
             }
 
-            const response = await fetch(`/search?q=${keyword}`);
-            const data = await response.json();
+            try {
+                const response = await fetch(`/search?q=${encodeURIComponent(keyword)}`);
+                const data = await response.json();
 
-            resultsDiv.innerHTML = ''; // ล้างของเก่าก่อนแสดงผลใหม่
+                resultsDiv.innerHTML = ''; 
 
-            if (data.length === 0) {
-                resultsDiv.innerHTML = '<p>ไม่พบข้อมูลที่ตรงกับคำค้นหา</p>';
-                return;
-            }
+                if (data.length === 0) {
+                    resultsDiv.innerHTML = '<p>ไม่พบข้อมูลที่ตรงกับคำค้นหา</p>';
+                    return;
+                }
 
-            // แสดงรายการที่ค้นเจอ
-            data.forEach(item => {
-                resultsDiv.innerHTML += `
-                    <div class="result-item">
-                        <img src="${item.imageUrl}" alt="image">
-                        <div>
-                            <h4>${item.title}</h4>
-                            <p>${item.description}</p>
+                data.forEach(item => {
+                    resultsDiv.innerHTML += `
+                        <div class="result-item">
+                            <img src="${item.imageUrl}" alt="image">
+                            <div>
+                                <h4>${item.title}</h4>
+                                <p>${item.description}</p>
+                            </div>
                         </div>
-                    </div>
-                `;
-            });
+                    `;
+                });
+            } catch (err) {
+                resultsDiv.innerHTML = '<p style="color: red;">เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์</p>';
+            }
         }
     </script>
 </body>
