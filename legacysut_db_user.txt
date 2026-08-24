@@ -1,0 +1,7 @@
+legacysut_db_user
+
+FK1ckB5LZm7xWKKw
+
+mongodb+srv://legacysut_db_user:<db_password>@cluster0.2bcptx8.mongodb.net/?appName=Cluster0
+
+622227952949223
