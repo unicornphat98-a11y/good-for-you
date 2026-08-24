@@ -27,11 +27,9 @@ const storage = new CloudinaryStorage({
 
 const upload = multer({ storage: storage });
 
-// เชื่อมต่อ MongoDB (ดึงค่าจาก Environment Variables บน Render)
-mongoose.connect(process.env.MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-}).then(() => console.log('MongoDB Connected'))
+// เชื่อมต่อ MongoDB (แก้ไขโดยเอาตัวเลือกที่ไม่รองรับออกแล้ว)
+mongoose.connect(process.env.MONGODB_URI)
+  .then(() => console.log('MongoDB Connected'))
   .catch(err => console.error('MongoDB Connection Error:', err));
 
 // โครงสร้างฐานข้อมูล
