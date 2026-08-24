@@ -1,83 +1,126 @@
-require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const multer = require('multer');
-const { v2: cloudinary } = require('cloudinary');
+const cloudinary = require('cloudinary').v2;
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const path = require('path');
 
 const app = express();
-const port = process.env.PORT || 3000;
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static('public'));
 
-// ตั้งค่า Cloudinary
+// ตั้งค่า Cloudinary (ใส่ค่าของคุณ)
 cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET
+    cloud_name: 'YOUR_CLOUD_NAME',
+    api_key: 'YOUR_API_KEY',
+    api_secret: 'YOUR_API_SECRET'
 });
 
-// ตั้งค่าการเก็บรูปภาพขึ้น Cloudinary
 const storage = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: {
-        folder: 'polist_uploads',
+        folder: 'uploads',
         allowed_formats: ['jpg', 'png', 'jpeg', 'webp']
     }
 });
+
 const upload = multer({ storage: storage });
 
-// เชื่อมต่อ MongoDB Online
-mongoose.connect(process.env.MONGODB_URI)
-    .then(() => console.log('Connected to MongoDB Online!'))
-    .catch(err => console.error('MongoDB connection error:', err));
+// เชื่อมต่อ MongoDB (ใส่ Connection String ของคุณ)
+mongoose.connect('YOUR_MONGODB_URI', {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+}).then(() => console.log('MongoDB Connected'));
 
-// สร้างโครงสร้างข้อมูล (Schema)
-const ItemSchema = new mongoose.Schema({
+// โครงสร้างฐานข้อมูล
+const ImageSchema = new mongoose.Schema({
     title: String,
     description: String,
     imageUrl: String,
+    cloudinaryId: String, // เก็บไว้ใช้สำหรับลบรูปออกจาก Cloudinary
     createdAt: { type: Date, default: Date.now }
 });
-const Item = mongoose.model('Item', ItemSchema);
+const ImageModel = mongoose.model('Image', ImageSchema);
 
-app.use(express.static('public'));
-
-// เส้นทางสำหรับหน้าแรก (แก้ปัญหา Not Found)
-app.get('/', (req, res) => {
-    res.sendFile(__dirname + '/public/index.html');
-});
-
-// API สำหรับรับข้อมูลและอัปโหลดรูปขึ้น Cloud
-app.post('/upload', upload.single('imageFile'), async (req, res) => {
+// 1. อัปโหลดหลายรูปพร้อมกัน (สูงสุด 5 รูป)
+app.post('/upload', upload.array('imageFiles', 5), async (req, res) => {
     try {
-        const newItem = new Item({
-            title: req.body.title,
-            description: req.body.description,
-            imageUrl: req.file.path // ลิงก์รูปจาก Cloudinary
-        });
+        const { title, description } = req.body;
+        const files = req.files;
 
-        await newItem.save();
-        res.json({ message: 'อัปโหลดสำเร็จ!', data: newItem });
+        if (!files || files.length === 0) {
+            return res.status(400).json({ message: 'กรุณาเลือกรูปภาพอย่างน้อย 1 รูป' });
+        }
+
+        const savedImages = [];
+        for (const file of files) {
+            const newImage = new ImageModel({
+                title: title || 'ไม่มีชื่อ',
+                description: description || '',
+                imageUrl: file.path,
+                cloudinaryId: file.filename
+            });
+            await newImage.save();
+            savedImages.push(newImage);
+        }
+
+        res.json({ message: `อัปโหลดสำเร็จ ${savedImages.length} รูป!`, data: savedImages });
     } catch (err) {
+        console.error(err);
         res.status(500).json({ message: 'เกิดข้อผิดพลาดในการอัปโหลด' });
     }
 });
 
-// API สำหรับค้นหาข้อมูลจาก MongoDB
+// 2. ค้นหา / ดึงข้อมูลทั้งหมด
 app.get('/search', async (req, res) => {
     try {
-        const keyword = req.query.q || '';
-        const results = await Item.find({
-            $or: [
-                { title: { $regex: keyword, $options: 'i' } },
-                { description: { $regex: keyword, $options: 'i' } }
-            ]
-        });
+        const query = req.query.q;
+        let filter = {};
+        if (query) {
+            filter = {
+                $or: [
+                    { title: { $regex: query, $options: 'i' } },
+                    { description: { $regex: query, $options: 'i' } }
+                ]
+            };
+        }
+        const results = await ImageModel.find(filter).sort({ createdAt: -1 });
         res.json(results);
     } catch (err) {
         res.status(500).json({ message: 'เกิดข้อผิดพลาดในการค้นหา' });
     }
 });
 
-app.listen(port, () => {
-    console.log(`Server is running at http://localhost:${port}`);
+// 3. แก้ไขรายละเอียดรูปภาพ
+app.put('/update/:id', async (req, res) => {
+    try {
+        const { title, description } = req.body;
+        await ImageModel.findByIdAndUpdate(req.params.id, { title, description });
+        res.json({ message: 'แก้ไขข้อมูลสำเร็จ' });
+    } catch (err) {
+        res.status(500).json({ message: 'เกิดข้อผิดพลาดในการแก้ไข' });
+    }
 });
+
+// 4. ลบรูปภาพ (ลบจากทั้ง MongoDB และ Cloudinary)
+app.delete('/delete/:id', async (req, res) => {
+    try {
+        const image = await ImageModel.findById(req.params.id);
+        if (!image) return res.status(404).json({ message: 'ไม่พบรูปภาพ' });
+
+        // ลบออกจาก Cloudinary
+        if (image.cloudinaryId) {
+            await cloudinary.uploader.destroy(image.cloudinaryId);
+        }
+
+        // ลบออกจาก MongoDB
+        await ImageModel.findByIdAndDelete(req.params.id);
+        res.json({ message: 'ลบรูปภาพสำเร็จ' });
+    } catch (err) {
+        res.status(500).json({ message: 'เกิดข้อผิดพลาดในการลบ' });
+    }
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
